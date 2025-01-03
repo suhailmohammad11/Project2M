@@ -54,39 +54,59 @@ class PropertyTax extends Tax {
 
     @Override
     public void displayDetails() {
-        System.out.printf("%5d %15d %10d %10c %10.2f\n", id, baseValue, builtUpArea, location, tax);
+        System.out.printf("%5d %15d %10d %10c %10.2f\n", id, builtUpArea,baseValue,	 location, tax);
     }
 }
 
 // VehicleTax Class
 class VehicleTax extends Tax {
+    private int registrNo;
     private String brand;
     private int velocity;
     private int seatCapacity;
+    private int type; // 1 for Petrol, 2 for Diesel, 3 for CNG
+    private int price; // Purchase cost
 
-    public VehicleTax(String brand, int velocity, int seatCapacity) {
+    public VehicleTax(int registrNo, String brand, int velocity, int seatCapacity) {
         super();
+        this.registrNo = registrNo;
         this.brand = brand;
         this.velocity = velocity;
         this.seatCapacity = seatCapacity;
     }
 
-    public void calculateTax(int type, int cost) {
+    // Add a method to set type and price
+    public void setTypeAndPrice(int type, int price) {
+        this.type = type;
+        this.price = price;
+    }
+
+    public void calculateTax() {
         switch (type) {
-            case 1 -> this.tax = velocity + seatCapacity + (0.01 * cost);
-            case 2 -> this.tax = velocity + seatCapacity + (0.11 * cost);
-            case 3 -> this.tax = velocity + seatCapacity + (0.12 * cost);
+            case 1 -> this.tax = velocity + seatCapacity + (0.01 * price); // Petrol
+            case 2 -> this.tax = velocity + seatCapacity + (0.11 * price); // Diesel
+            case 3 -> this.tax = velocity + seatCapacity + (0.12 * price); // CNG
+            default -> throw new IllegalArgumentException("Invalid fuel type!");
         }
     }
 
-    @Override
-    public void calculateTax() {
-        throw new UnsupportedOperationException("Use calculateTax(int type, int cost) for VehicleTax.");
+    public int getRegistrationNumber() {
+        return registrNo;
     }
 
     @Override
     public void displayDetails() {
-        System.out.printf("%5d %15s %10d %10d %10.2f\n", id, brand, velocity, seatCapacity, tax);
+        String fuelType = switch (type) {
+            case 1 -> "Petrol";
+            case 2 -> "Diesel";
+            case 3 -> "CNG";
+            default -> "Unknown";
+        };
+
+        System.out.printf(
+            "%5d %15s %10d %10d %10s %10d %10.2f\n", 
+            registrNo, brand, velocity, seatCapacity, fuelType, price, tax
+        );
     }
 }
 
@@ -131,7 +151,7 @@ public class AppTester {
                 System.out.println("+-------------------------------------+");
                 System.out.println("1. Property Tax Menu");
                 System.out.println("2. Vehicle Tax Menu");
-                System.out.println("3. Summary Report");
+                System.out.println("3. Total Tax");
                 System.out.println("4. Exit");
                 System.out.print("Select an option: ");
                 int mainChoice = sc.nextInt();
@@ -139,7 +159,7 @@ public class AppTester {
                 switch (mainChoice) {
                     case 1 -> propertyTaxMenu(sc, properties);
                     case 2 -> vehicleTaxMenu(sc, vehicles);
-                    case 3 -> generateSummary(properties, vehicles);
+                    case 3 -> total(properties, vehicles);
                     case 4 -> {
                         System.out.println("Exiting the application. Thank you!");
                         System.exit(0);
@@ -192,7 +212,7 @@ public class AppTester {
                 }
                 case 3 -> {
                     System.out.println("\n+--------------------------------------------------+");
-                    System.out.printf("%5s %15s %10s %10s %10s\n", "ID", "Base Value", "Area", "City", "Tax");
+                    System.out.printf("%5s %15s %10s %10s %10s\n", "ID", "BuiltupArea", "Baseprice", "In City", "Property Tax");
                     System.out.println("+--------------------------------------------------+");
                     properties.forEach(PropertyTax::displayDetails);
                 }
@@ -214,37 +234,50 @@ public class AppTester {
             System.out.println("3. Display All Vehicles");
             System.out.println("4. Back to Main Menu");
             System.out.print("Select an option: ");
-            int choice = sc.nextInt();
 
+            int choice = sc.nextInt();
             switch (choice) {
                 case 1 -> {
+                    System.out.println("Enter Registration Number: ");
+                    int registrNo = sc.nextInt();
+                    sc.nextLine(); // Consume leftover newline
                     System.out.print("Enter Brand: ");
-                    String brand = sc.next();
+                    String brand = sc.nextLine();
                     System.out.print("Enter Velocity: ");
                     int velocity = sc.nextInt();
                     System.out.print("Enter Seat Capacity: ");
                     int seatCapacity = sc.nextInt();
-                    vehicles.add(new VehicleTax(brand, velocity, seatCapacity));
+                    vehicles.add(new VehicleTax(registrNo, brand, velocity, seatCapacity));
                     System.out.println("Vehicle added successfully!");
                 }
+                
                 case 2 -> {
-                    System.out.print("Enter Vehicle ID to calculate tax: ");
-                    int id = sc.nextInt();
-                    if (id > 0 && id <= vehicles.size()) {
+                    System.out.print("Enter Registration Number to calculate tax: ");
+                    int registrNo1 = sc.nextInt();
+                    VehicleTax vehicle = vehicles.stream()
+                        .filter(v -> v.getRegistrationNumber() == registrNo1)
+                        .findFirst()
+                        .orElse(null);
+
+                    if (vehicle != null) {
                         System.out.println("Choose Type: 1. Petrol 2. Diesel 3. CNG");
                         int type = sc.nextInt();
                         System.out.print("Enter Purchase Cost: ");
                         int cost = sc.nextInt();
-                        vehicles.get(id - 1).calculateTax(type, cost);
+
+                        vehicle.setTypeAndPrice(type, cost);
+                        vehicle.calculateTax();
                         System.out.println("Vehicle tax calculated successfully!");
                     } else {
-                        throw new InvalidInputException("Invalid Vehicle ID.");
+                        System.out.println("Invalid Vehicle ID.");
                     }
                 }
+                
                 case 3 -> {
-                    System.out.println("\n+--------------------------------------------------+");
-                    System.out.printf("%5s %15s %10s %10s %10s\n", "ID", "Brand", "Velocity", "Seats", "Tax");
-                    System.out.println("+--------------------------------------------------+");
+                	System.out.println("\n+--------------------------------------------------------------------------------------------+");
+                	System.out.printf("%5s %15s %10s %10s %10s %10s %10s\n", "ID", "Brand", "Velocity", "Seats", "Type", "Price", "Tax");
+                	System.out.println("+----------------------------------------------------------------------------------------------+");
+
                     vehicles.forEach(VehicleTax::displayDetails);
                 }
                 case 4 -> {
@@ -252,10 +285,12 @@ public class AppTester {
                 }
                 default -> throw new InvalidInputException("Invalid choice! Please select a valid option.");
             }
+            sc.close();
         }
     }
 
-    private static void generateSummary(List<PropertyTax> properties, List<VehicleTax> vehicles) {
+
+    private static void total(List<PropertyTax> properties, List<VehicleTax> vehicles) {
         double totalPropertyTax = properties.stream().mapToDouble(PropertyTax::getTax).sum();
         double totalVehicleTax = vehicles.stream().mapToDouble(VehicleTax::getTax).sum();
 
@@ -265,5 +300,7 @@ public class AppTester {
         System.out.printf("%5d %15s %10d %10.2f\n", 1, "Properties", properties.size(), totalPropertyTax);
         System.out.printf("%5d %15s %10d %10.2f\n", 2, "Vehicles", vehicles.size(), totalVehicleTax);
         System.out.printf("%5s %15s %10d %10.2f\n", "", "Total", properties.size() + vehicles.size(), totalPropertyTax + totalVehicleTax);
+      
     }
+    
 }
